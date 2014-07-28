@@ -2,13 +2,13 @@ function LacAnalysis2014()
     imagename = 'honeycomb2A';
 
     imgFolder = ['../images1/'];
-	resFolder = [imgFolder, 'resml1/'];
+	resFolder = ['../results/', 'resml1/'];
 	%% Load Image
 	fileName = strcat(imgFolder, imagename,'.tif');
 	idata = imread(fileName);
-    
+
   Cal_BinLac(imagename, idata, resFolder);
-    
+
 	%imagename = "test"
 	%idata = np.array([[5,4,8,7,9],[12,12,11,8,12],[11,12,9,10,5],[1,2,5,3,11],[5,9,2,7,10]])
 	%Cal_GrayScaleLacunarity(imagename, idata)
@@ -41,7 +41,7 @@ function Cal_BinLac(imagename, idata, resFolder)
 	SaveLacData(dataFilename, [lacData; lacDataR; lac1; lacR1], [lacLeg; lacLeg1])
 
     %% Plot data
-    
+
     x = 1:length(lacData(1,:));
 	f1 = figure;
 	plot(x, lacData);
@@ -53,7 +53,7 @@ function Cal_BinLac(imagename, idata, resFolder)
 	figFilename = strcat(resFolder, imagename, '_1.png');
 	%savefig(figFilename);
     	saveas(f1, figFilename,'png');
-    
+
 	f1 = figure;
 	plot(log(x),log(lacData));
 	legend(lacLeg);
@@ -64,7 +64,7 @@ function Cal_BinLac(imagename, idata, resFolder)
 	figFilename = strcat(resFolder, imagename, '_log1.png');
 	%savefig(figFilename);
     	saveas(f1, figFilename,'png');
-    
+
 	f1 = figure;
 	lx = log(x);
 	for n = 1:length(lacData)
@@ -74,7 +74,7 @@ function Cal_BinLac(imagename, idata, resFolder)
 	figFilename = strcat(resFolder, imagename, '_log1norm.png');
 	%savefig(figFilename);
     	saveas(f1, figFilename,'png');
-    
+
  	figure;
 	plot(x, lac1);
 	msg = ['Threshold : Otsu'];
@@ -100,7 +100,7 @@ function Cal_BinLac(imagename, idata, resFolder)
 
 	figFilename = strcat(resFolder, imagename, '_otsulog1norm.png');
 	saveas(gcf, figFilename, 'png');
-        
+
 	% 20% and %80 and reverse 20%
 	f1 = figure;
 	for n = 1:length(lacData)
@@ -127,7 +127,7 @@ function SaveLacData(fileName, datax, datay, legend)
 	%csvwrite(f3, datay);
 	%dlmwrite(fileName, lac, ','); 	% .txt
     %save(fileName, 'lac');   		% .mat
-    
+
     save(fileName, 'datax', 'datay', 'legend');   		% .mat
 
 %------------------------------------------------------------------------------

@@ -10,7 +10,7 @@ from ALVLACSubRoutines  import *
 from Output 			import *
 
 imgFolder = '../images1/'
-resFolder = imgFolder + 'respy1/'
+resFolder = '../results/respy1/'
 
 def getImageData(dataFolder, fileName, extFl):
 	inim  = Image.open(dataFolder + fileName + extFl)
@@ -326,12 +326,24 @@ def Calc_BinLac(imagename, idata):
 	f7.clear()
 	for n in range(len(lacData)):
 		y1 = NormalizedMahil(lacData[n])
-		p1 = plt.plot(lx, y1, label=lacLeg[n])
+		p1 = plt.plot(x, y1, label=lacLeg[n])
+	plt.legend()
+	plt.title('Histogram Threshold 10% ~ 90% - Normalized (Mahil)')
+	plt.xlabel('window size')
+	plt.ylabel('lacunarity (log ratio)')
+	figFilename = resFolder + imagename + "_HistThresh_normMlr.png"
+	plt.savefig(figFilename)
+
+	f71 = plt.figure()  # Norm - M
+	f71.clear()
+	for n in range(len(lacData)):
+		y1 = NormalizedMahil(lacData[n])
+		p1 = plt.loglog(x, y1, label=lacLeg[n])
 	plt.legend()
 	plt.title('Histogram Threshold 10% ~ 90% - Normalized (Mahil)')
 	plt.xlabel('window size (log)')
-	plt.ylabel('lacunarity (log ratio)')
-	figFilename = resFolder + imagename + "_HistThresh_normMlrlog.png"
+	plt.ylabel('lacunarity (log logratio)')
+	figFilename = resFolder + imagename + "_HistThresh_normMloglrlog.png"
 	plt.savefig(figFilename)
 
 	f8 = plt.figure()  # Norm - M
@@ -341,9 +353,9 @@ def Calc_BinLac(imagename, idata):
 		p1 = plt.plot(lx, y1, label=lacLeg[n])
 	plt.legend()
 	plt.title('Histogram Threshold 10% ~ 90% - Inverse Images - Normalized (Mahil)')
-	plt.xlabel('window size (log)')
+	plt.xlabel('window size')
 	plt.ylabel('lacunarity (log ratio)')
-	figFilename = resFolder + imagename + "_HistThresh_Inverse_normMlrlog.png"
+	figFilename = resFolder + imagename + "_HistThresh_Inverse_normMlr.png"
 	plt.savefig(figFilename)
 
 	f9 = plt.figure() # Norm - R
@@ -512,29 +524,13 @@ def Calc_BinLac(imagename, idata):
 	plt.savefig(figFilename)
 
 	#plt.show()
-	"""
-	plt.close(f0)
-	plt.close(f1)
-	plt.close(f2)
-	plt.close(f3)
-	plt.close(f4)
-	plt.close(f5)
-	plt.close(f6)
-	plt.close(f7)
-	plt.close(f8)
-	plt.close(f9)
-	plt.close(f10)
-	plt.close(f11)
-	plt.close(f12)
-	plt.close(f13)
-	plt.close(f14)
-	plt.close(f15)
-	plt.close(f16)
-	plt.close(f17)
-	plt.close(f18)
-	plt.close(f19)
-	"""
-	plt.close('all')
+
+	plt.close(f0); plt.close(f1); plt.close(f2); plt.close(f3); plt.close(f4); plt.close(f5)
+	plt.close(f6); plt.close(f7); plt.close(f71); plt.close(f8); plt.close(f9); plt.close(f10);
+	plt.close(f11); plt.close(f12); plt.close(f13); plt.close(f14); plt.close(f15)
+	plt.close(f16); plt.close(f17); plt.close(f18); plt.close(f19)
+
+	#plt.close('all')
 
 def SplitImageData(idata, levels):
 	"""

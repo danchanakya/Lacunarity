@@ -23,7 +23,6 @@ from numpy import *
 #import sys
 #import os.path
 
-
 def JumpingImg(datarray, func, w = 2, clipType = 0):
 	(sx, sy) = datarray.shape
 	(ma, na) = {

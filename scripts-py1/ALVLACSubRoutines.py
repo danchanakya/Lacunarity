@@ -55,14 +55,15 @@ def JumpingImg(datarray, func, w = 2, clipType = 0):
 # Moving / Sliding window
 def SlidingImg(datarray, func, w = 2):
 	(sx, sy) = datarray.shape
-	if min(sx-w + 1,sy - w + 1) == 0:
-		OutIm = zeros((1,1), float)
-		OutIm[0,0] = datarray[0,0]
-	else:
-		OutIm = zeros((sx-w + 1,sy - w + 1), float)
+	if min(sx - w + 1, sy - w + 1) > 0:
+		OutIm = zeros((sx - w + 1, sy - w + 1), float)
 		for y in range(sy - w + 1):
 			for x in range(sx - w + 1):
-				OutIm[x,y] = func(datarray[x:x+w,y:y+w])
+				OutIm[x, y] = func(datarray[x:x + w, y:y + w])
+	else:
+		OutIm = zeros((1, 1), float)
+		OutIm[0, 0] = datarray[0, 0]
+
 	return OutIm
 
 
@@ -75,14 +76,16 @@ def SlidingImgGray(datarray, func, w = 2):
 	else:
 		OutIm = zeros((sx-w + 1,sy - w + 1,255), float)
 		for y in range(sy - w + 1):
-			print w,y
 			for x in range(sx - w + 1):
 				for z in range(255 - w + 1):
+
 					dA1 = reshape(datarray[x:x+w,y:y+w], w*w)
 					dArray  = [z < val and val <=(z+w) for val in dA1]
 					dArrayN = array(dArray, dtype='B')
 					#print dA1
+
 					#print dArrayN
+
 					OutIm[x,y,z] = func(dArrayN)
 	return OutIm
 

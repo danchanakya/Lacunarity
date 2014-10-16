@@ -4,6 +4,7 @@ import numpy as np
 import datetime
 
 import colorsys
+import readColorList as color
 
 from scipy.misc import imread,imsave
 
@@ -13,18 +14,22 @@ from copy import deepcopy
 from ALVLACSubRoutines  import *
 from Output 			import *
 
-imgFolder = '../images1/'
-resFolder = '../results/respy1/'
+#imgFolder = '../images1/'
+imgFolder = '../images2/'
+
+resFolder = '../results/respy2/'
 
 def getImageData(dataFolder, fileName, extFl):
 	inim  = Image.open(dataFolder + fileName + extFl)
 
+	imgMode = inim.mode
+	print
 	if inim.mode != "L":
 		inim = inim.convert("L")
 
 	inar = np.asarray(inim)
 	imageDim = len(inar.shape)
-	print "Image " + fileName + " size: " + str(inar.shape) + ' dim (' + str(imageDim) + ')'
+	print "Image " + fileName + " size: " + str(inar.shape) + ' dim (' + str(imageDim) + ')', "Image mode: ", imgMode
 	# Pick image data
 	if imageDim == 2:
 		inar1 = inar[:,:]
@@ -197,7 +202,7 @@ def GetLacunarity(data):
 
 	return lac
 
-def GetLacunarityImg(data, wd, imagename, color):
+def GetLacunarityImg(data, wd, imagename, color, slice = 5):
 	op = 2
 	(sx, sy) = data.shape
 	minxy = min(sy, sx);
@@ -241,9 +246,10 @@ def GetLacunarityImg(data, wd, imagename, color):
 		for y in range(sy-df*2):
 			for x in range(sx-df*2):
 				if (maxD-minD) > 0:
-					valH = 1-(lacData[x, y]-minD)/(maxD-minD) * 0.9
+					#valH = 1-(lacData[x, y]-minD)/(maxD-minD) * 0.9
+					valH = int((lacData[x, y]-minD) * slice / (maxD-minD)) * 1.0 / slice
 				else:
-					valH = 0.1
+					valH = 0.0
 				rgb  = colorsys.hsv_to_rgb(valH, 1.0, 1.0)
 				#rgb1  = hslToRgb(valH, 0.5, 1.0)
 				lacImage[x, y] = [ x1 * 255 for x1 in rgb]
@@ -253,21 +259,95 @@ def GetLacunarityImg(data, wd, imagename, color):
 		#imsave("Result-" + str(op) + "-" + str(wd) + ".jpg", lacImage)
 	return lacImage
 
-"""
-	dataAve = np.average(data)
-	dataStd = np.std(data)
-	lac1  = 1 + (dataStd * dataStd)/(dataAve * dataAve)
-	lac.append(lac1)
+def CalcLacunarity(data, wd):
+	(sx, sy) = data.shape
+	minxy = min(sx, sy);
 
-	# find lac from count = 2 to msize
-	for count in range(2, minxy+1):
-		#print "Window = ", count
-		CS = SlidingImg(data, sum, count)
+	if minxy > wd:
+		CS = SlidingImg(data, sum, wd)
 		dataAve = np.average(CS)
 		dataStd = np.std(CS)
-		lac1  = 1 + (dataStd * dataStd)/(dataAve * dataAve)
-		lac.append(lac1)
-"""
+		lac  = 1 + (dataStd * dataStd)/(dataAve * dataAve)
+	else:
+		lac = -1
+
+	return lac
+
+def GetSegLacunarityGrayImage(data, wd, imagename, slice = 5):
+	(sx, sy) = data.shape
+	minxy = min(sy, sx);
+	try:	# windows size
+		wd = int(wd)
+	except: # window ratio
+		s  = int(wd[:-1])
+		wd = min(sx/s, sy/s)
+
+	df = wd / 2
+	lacData  = np.zeros([sx-df*2, sy-df*2], dtype=np.float)
+	lacData1  = np.zeros([sx-df*2, sy-df*2], dtype=np.float)
+
+	for y in range(sy-df*2):
+		for x in range(sx-df*2):
+			selData = data[x:x+wd, y:y+wd]
+			dataAve = np.average(selData)
+			dataStd = np.std(selData)
+			if dataAve > 0:
+				lacData [x, y]  = 1 + (dataStd * dataStd)/(dataAve * dataAve)
+			else:
+				lacData [x, y]  = 1.0
+
+	fileName = resFolder + imagename + '_res_sliced-' +  str(slice) + '_' + str(wd) + '.tif'
+	legendFileName = resFolder + imagename + '_legend_sliced-' +  str(slice) + '_' + str(wd) + '.tif'
+
+	minD = np.min(lacData)
+	maxD = np.max(lacData)
+	rngD = maxD - minD
+	partD = (rngD)/slice
+	print "Lacunarity range: from ", minD, " to ", maxD
+
+	# Get Histogram for all possible values
+	(dataHst, nHst) = np.histogram(lacData, slice)
+	print dataHst
+	print nHst
+	#print sum(dataHst)
+
+	#dataHstProb = dataHst * 1.0/ dataHst.sum()
+	#print dataHstProb
+	clr = color.colorLUT(legendFileName)
+
+	print clr.items()[3][1]
+
+	lacImage = np.zeros([sx-df*2, sy-df*2,3], dtype=np.uint8)
+	for y in range(sy-df*2):
+		for x in range(sx-df*2):
+			if (rngD) > 0:
+				#valH = int((lacData[x, y]-minD) * slice / (rngD)) * 255.0 / slice
+				#valH = np.ceil((lacData[x, y]-minD) * slice /(rngD))
+				valH = int((lacData[x, y]-minD) * slice / rngD) * 1.0 / slice
+			else:
+				valH = 0.0
+			lacData1[x, y] = valH
+			rgb  = colorsys.hsv_to_rgb(valH, 1.0, 1.0)
+			#rgb1  = hslToRgb(valH, 0.5, 1.0)
+			lacImage[x, y] = [ x1 * 255 for x1 in rgb]
+
+	#print set(lacData1.flat)
+	#minD1 = np.min(lacData1)
+	#maxD1 = np.max(lacData1)
+	#print minD1, maxD1
+	# Get Histogram for all possible values
+	#(dataHst1, nHst1) = np.histogram(lacData1, slice)
+	#print dataHst1
+	#print nHst1
+	#print sum(dataHst1)
+
+	#dataHstProb = dataHst1 * 1.0/ dataHst1.sum()
+	#print dataHstProb
+
+	if len(imagename) > 0:
+		Image.fromarray(lacImage).save(fileName, "TIFF")
+
+	return lacImage
 
 def NormalizedRoy(data):
 	lacNorm = []
@@ -361,6 +441,21 @@ def Lac_Histogram_Threshold(idata, savePics = ''):
 
 	return [lacData, lacDataR, lacLeg]
 
+def Calc_LacImageGrayScale(imagename, idata, wd):
+	dt1 = datetime.datetime.now()
+
+	fileName = resFolder + imagename + '.tif'
+
+	if len(imagename) > 0:
+		idata
+		Image.fromarray(idata).save(fileName, "TIFF")
+
+	for w1 in wd:
+		GetSegLacunarityGrayImage(idata, w1, imagename)
+
+	dt2 = datetime.datetime.now()
+	print "Time Taken for Calc_LacImageGrayScale   = ", dt2-dt1
+
 def Calc_LacImageOtsu(imagename, idata, wd, color = False):
 	dt1 = datetime.datetime.now()
 
@@ -382,7 +477,7 @@ def Calc_LacImageOtsu(imagename, idata, wd, color = False):
 	#	Image.fromarray(trDataR3 * 255).save(resFolder + imagename +'_Imgotsu_' + str(threshold) + 'Res.tif',"TIFF")
 
 	dt2 = datetime.datetime.now()
-	print "Lac_Otsu_Threshold      = ", dt2-dt1
+	print "Time Taken for Lac_Otsu_Threshold      =", dt2-dt1
 
 	return [trData3, threshold]
 
@@ -808,34 +903,44 @@ def Cal_GrayScaleLacunarity(imagename, idata, windowsSizes):
 
 def ProcessAnImage(imagename, ext1):
 	dt1 = datetime.datetime.now()
+
 	# Load Image
 	idata = getImageData(imgFolder, imagename, ext1)
+
 	#Calc_BinLac(imagename, idata)
-	winds = [3, 5, 51, '10x', '20x'] # [3, 5, 10]
-	Calc_LacImageOtsu(imagename, idata, winds)
-	Calc_LacImageOtsu(imagename, idata, winds, True)
+	winds = [3, 5, 51, '10x', '20x']
+	winds = [7, 24, 33, 51]
+	winds = [12]
+	#Calc_LacImageOtsu(imagename, idata, winds)
+	#Calc_LacImageOtsu(imagename, idata, winds, True)
+
+	Calc_LacImageGrayScale(imagename, idata, winds)
 
 	#idata = np.array([[5,4,8,7,9],[12,12,11,8,12],[11,12,9,10,5],[1,2,5,3,11],[5,9,2,7,10]])
 	#print idata
 	#Cal_GrayScaleLacunarity(imagename, idata, [3])
 	#wins = range(1, minxy+1)
-	wins = [3, 4]
-
+	#wins = [3, 4]
 	#Cal_GrayScaleLacunarity(imagename, idata, wins)
+
 	dt2 = datetime.datetime.now()
-	print "Image:", imagename, " time taken:", dt2-dt1
+	print "Time Taken for Image:", imagename, " =", dt2-dt1
 
 if __name__ == '__main__':
-	ProcessAnImage('honeycomb2A', '.tif')
-	ProcessAnImage('honeycombb', '.tif')
-	ProcessAnImage('RAC275', '.tif')
+	# '../images1/'
+	#ProcessAnImage('honeycomb2A', '.tif')
+	#ProcessAnImage('honeycombb', '.tif')
+	#ProcessAnImage('RAC275', '.tif')
 	#ProcessAnImage('RAC325', '.tif')
 
-	ProcessAnImage('Tropical-forest-Brazil-photo-by-Edward-Mitchard-small', '.jpg')
+	#ProcessAnImage('Tropical-forest-Brazil-photo-by-Edward-Mitchard-small', '.jpg')
 	#ProcessAnImage('forest-20130117-full', '.jpg')
 
-	ProcessAnImage('back_forest', '.jpg')
-	ProcessAnImage('glight2_pho_2014', '.jpg')
-	ProcessAnImage('GoogleEarthEng_main_1203', '.jpg')
-	ProcessAnImage('peru480-blogSpan', '.jpg')
+	#ProcessAnImage('back_forest', '.jpg')
+	#ProcessAnImage('glight2_pho_2014', '.jpg')
+	#ProcessAnImage('GoogleEarthEng_main_1203', '.jpg')
+	#ProcessAnImage('peru480-blogSpan', '.jpg')
 
+	# '../images2/'
+	ProcessAnImage('lena256b', '.bmp')
+	#ProcessAnImage('MRI slice', '.jpg')

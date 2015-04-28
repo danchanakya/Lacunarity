@@ -16,8 +16,10 @@ Changed : Jul 22 2008
 #import Image
 #import ImageOps
 
+import numpy as np
+
 from math  import *
-from numpy import *
+#from numpy import *
 
 #import time
 #import sys
@@ -29,7 +31,7 @@ def JumpingImg(datarray, func, w = 2, clipType = 0):
 		0: lambda : (sx//w, sy//w),
 		1: lambda : (sx//w + (sx % w >= 1 and 1 or 0), sy//w + (sy % w >= 1 and 1 or 0))
 				}[clipType]()
-	OutIm = zeros((ma, na), float)
+	OutIm = np.zeros((ma, na), float)
 	(mab, nab) = (sx % w, sy % w)
 	if clipType == 1:
 		nal = na - (sx % w >= 1 and 1 or 0)
@@ -56,12 +58,12 @@ def JumpingImg(datarray, func, w = 2, clipType = 0):
 def SlidingImg(datarray, func, w = 2):
 	(sx, sy) = datarray.shape
 	if min(sx - w + 1, sy - w + 1) > 0:
-		OutIm = zeros((sx - w + 1, sy - w + 1), float)
+		OutIm = np.zeros((sx - w + 1, sy - w + 1), float)
 		for y in range(sy - w + 1):
 			for x in range(sx - w + 1):
 				OutIm[x, y] = func(datarray[x:x + w, y:y + w])
 	else:
-		OutIm = zeros((1, 1), float)
+		OutIm = np.zeros((1, 1), float)
 		OutIm[0, 0] = datarray[0, 0]
 
 	return OutIm
@@ -71,7 +73,7 @@ def SlidingImg(datarray, func, w = 2):
 def SlidingImgGray(datarray, func, w = 2):
 	(sx, sy) = datarray.shape
 	if min(sx-w + 1,sy - w + 1) == 0:
-		OutIm = zeros((1,1,1), float)
+		OutIm = np.zeros((1,1,1), float)
 		OutIm[0,0,0] = datarray[0,0]
 	else:
 		OutIm = zeros((sx-w + 1,sy - w + 1,255), float)
@@ -87,6 +89,40 @@ def SlidingImgGray(datarray, func, w = 2):
 					#print dArrayN
 
 					OutIm[x,y,z] = func(dArrayN)
+	return OutIm
+
+# this function needs to be updated ...
+def JumpingImg3D(datarray, func, w = 2, clipType = 2):
+	(sx, sy, sz) = datarray.shape
+	(ma, na, pa) = {
+		0: lambda : (sx, sy, sz),
+		1: lambda : ((sx//w)*w, (sy//w)*w, (sz//w)*w),
+		2: lambda : (ceil(sx/w)*w, ceil(sy/w)*w, ceil(sz/w)*w)
+				}[clipType]()
+	(newm, newn, newp) = (int(ceil(ma/w)), int(ceil(na/w)), int(ceil(pa/w))) # check w non float issue
+	OutIm = zeros((newm, newn, newp), float)
+	for z in range(newp):
+		for y in range(newn):
+			for x in range(newm):
+				OutIm[x,y,z] = func(datarray[x*w:x*w+w,y*w:y*w+w,z*w:z*w+w])
+	return OutIm
+
+def sum1(data):
+	return sum(np.ravel(data))
+
+def SlidingImg3D(datarray, func, w = 2):
+	(sx, sy, sz) = datarray.shape
+	if min(sx - w + 1, sy - w + 1, sz - w + 1) > 0:
+		OutIm = np.zeros((sx - w + 1,sy - w + 1, sz - w + 1), float)
+		for z in range(sz - w + 1):
+			for y in range(sy - w + 1):
+				for x in range(sx - w + 1):
+					d0 = datarray[x:x+w,y:y+w,z:z+w]
+					OutIm[x,y,z] = func(d0)
+	else:
+		OutIm = zeros((1, 1, 1), float)
+		OutIm[0, 0, 0] = datarray[0, 0, 0]
+
 	return OutIm
 
 # piecewise gradient

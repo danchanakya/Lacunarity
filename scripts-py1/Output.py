@@ -76,10 +76,11 @@ def plotMul(data, title, legend, log = 1, saveas = None):
 	else:
 		plt.xlabel('r')
 		extname = '.png'
-	plt.ylabel('Lacanurity')
-	figFilename = saveas + extname
+	plt.ylabel('y')  # 'Lacanurity'
+
 	# Save what we just plotted as a color postscript file.
 	if saveas != None:
+		figFilename = saveas + extname
 		#plt.savefig(figFilename,format='png')
 		plt.savefig(figFilename)
-	#plt.show()
+	plt.show()

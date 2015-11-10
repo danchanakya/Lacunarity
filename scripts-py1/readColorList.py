@@ -3,13 +3,35 @@ import Image
 import ImageDraw
 import numpy as np
 
+clrMap9 = {
+		'Red'			: [189,10,19],
+		'Orange'		: [252,72,31],
+		'Gold'			: [253,177,43],
+		'Yellow'		: [216,253,62],
+		'Lime Green'	: [130,253,128],
+		'Cyan'			: [55,254,215],
+		'Deep Sky Blue'	: [28,159,252],
+		'Light Slate Blue'	: [15,56,251],
+		'Blue'			: [8,25,188]
+		}
+clrMap = {   # 5
+		'Red'			: [238,18,25],
+		'Gold'			: [254,195,45],
+		'Lime Green'	: [130,253,128],
+		'Cyan'			: [30,178,252],
+		'Blue'			: [10,33,237]
+		}
+
+
 def colorLUT(legendFilename, HistRange, sliced = 9):
 	colorRowHeight = 12
 	colorLst = {}
-	colorNameLst = ['Lime Green', 'Spring Green', 'Goldenrod', 'Gold', 'Yellow', 'Khaki', 'Beige',
-					'Red', 'Sienna','Chocolate', 'Dark Orange',
-					'Blue', 'Turquoise', 'Aquamarine',
-	                'Orchid', 'Violet', 'Pink', 'Gray', 'Indian Red', 'Lawn Green']
+	# colorNameLst = ['Lime Green', 'Spring Green', 'Goldenrod', 'Gold', 'Yellow', 'Khaki', 'Beige',
+	#				'Red', 'Sienna','Chocolate', 'Dark Orange',
+	#				'Blue', 'Turquoise', 'Aquamarine',
+	 #               'Orchid', 'Violet', 'Pink', 'Gray', 'Indian Red', 'Lawn Green']
+	colorNameLst9 = ['Red', 'Orange', 'Gold', 'Yellow', 'Lime Green', 'Cyan', 'Deep Sky Blue', 'Light Slate Blue', 'Blue']
+	colorNameLst = ['Red', 'Gold', 'Lime Green', 'Cyan', 'Blue']
 
 	clrTotalList = ReadColorList()
 	for clrSet in clrTotalList:
@@ -24,7 +46,8 @@ def colorLUT(legendFilename, HistRange, sliced = 9):
 	#print colorLst, len(colorLst)
 	colorLUT = np.zeros([len1 * colorRowHeight, 120, 3], dtype=np.uint8)
 	for u in range(len1):
-		clr1 = colorLst[colorNameLst[u]]
+		#clr1 = colorLst[colorNameLst[8-u]]
+		clr1 = clrMap[colorNameLst[len(colorNameLst)-1-u]]
 		for v2 in range(colorRowHeight):
 			for x in range(120):
 				colorLUT[u * colorRowHeight + v2, x] = clr1
@@ -37,7 +60,7 @@ def colorLUT(legendFilename, HistRange, sliced = 9):
 		del draw
 		im1.save(legendFilename, "TIFF")
 
-	return colorLst
+	return [clrMap, colorNameLst] # colorLst
 
 def allColors(filenamePath):
 	colorRowHeight 	= 12

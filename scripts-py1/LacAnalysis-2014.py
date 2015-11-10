@@ -25,15 +25,15 @@ from Output 			import *
 # Folders for input images and results
 imgFolder1 = '/Users/danthac/Work/MSc/Lacunarity-MSMath-CSUCI/'
 #imgFolder = imgFolder1 + 'imagesBrodatzTexture/textures/'
-resFolder1 = '/Volumes/D16SD_TD/Study/MSc/results/'
+resFolder1 = '/Volumes/D16SD_TD/Study/MSc/Results/'
 resFolder  = resFolder1 + 'restmp/'
 
 testList = []
 
 # All Possible threshold methods - "fixed", "isodata", "adaptive", "otsu"
 #ThresholdTypes = ["fixed", "isodata", "adaptive", "otsu"]
-#ThresholdTypes  = ["adaptive", "otsu"]
-ThresholdTypes = ["adaptive"]
+#ThresholdTypes = ["adaptive", "otsu"]
+ThresholdTypes  = ["adaptive"]
 #ThresholdTypes = ["otsu"]
 #ThresholdTypes = ["fixed"]
 #ThresholdTypes = ["isodata"]
@@ -41,6 +41,7 @@ ThresholdTypes = ["adaptive"]
 # Switches
 histEq 		= True
 histEqPic 	= True
+
 CalLac 		= True
 FullRg 		= True
 Graphs 		= True
@@ -88,17 +89,16 @@ def histeq(im, imagename, nbr_bins=256):
 	# use linear interpolation of cdf to find new pixel values
 	im2 = np.interp(im.flatten(), bins[:-1], cdf)
 
-	if histEqPic:
-		#PlotHist(imagename + '_af', idata, 18)
-		#plt.imshow(idata, cmap=plt.cm.gray)
-		#plt.savefig(resFolder + imagename + '_hiseq1.jpg')
-		idata  = np.array(im2.reshape(im.shape), dtype='B')
-		Image.fromarray(idata).save(resFolder + imagename + "_he.tif", "TIFF")
+	#PlotHist(imagename + '_af', idata, 18)
+	#plt.imshow(idata, cmap=plt.cm.gray)
+	#plt.savefig(resFolder + imagename + '_hiseq1.jpg')
+	#idata  = np.array(im2.reshape(im.shape), dtype='B')
+	#Image.fromarray(idata).save(resFolder + imagename + "_he.tif", "TIFF")
 
 	if histEqPic:
 		f1 = plt.figure()
 		f1.clear()
-		r1 = plt.hist(idata.flatten(), nbr_bins)
+		r1 = plt.hist(im2, nbr_bins)
 		plt.title('Histogram After ' + imagename)
 		plt.xlabel('bin')
 		plt.ylabel('Freq.')
@@ -208,8 +208,8 @@ def hslToRgb(h, s, l):
 	 @param   Number  l       The lightness
 	 @return  Array           The RGB representation
 	"""
-	h1 = h/6.0
-	c  = (1 - (2*l-1)) * s
+	#h1 = h/6.0
+	#c  = (1 - (2*l-1)) * s
 	if s == 0:
 		r = g = b = l # achromatic
 	else:
@@ -417,7 +417,7 @@ def CalcLacunarity(data, wd = 1, pos = []):
 def GetLacImageLocation(data, wdList, calPos, imagename):
 	resDict = {}
 	(sx, sy) = data.shape
-	minxy = min(sy, sx);
+	#minxy = min(sy, sx);
 
 	res = []
 
@@ -440,7 +440,7 @@ def GetLacImageLocationNWindow(data, wd, Pos, imagename):
 	(sx, sy) = data.shape
 
 	#print wd, Pos
-	res = []
+	#res = []
 
 	df = wd / 2
 	xtop = Pos[0] - df
@@ -454,10 +454,11 @@ def GetLacImageLocationNWindow(data, wd, Pos, imagename):
 
 	return ret
 
-def GetLacSegImage(data, wd, imagename, slice = 9):
+def GetLacSegImage(iData, thresh, wd, imagename, slice = 9):
 	resDict = {}
+	data = maskImage(imagename, iData)
 	(sx, sy) = data.shape
-	minxy = min(sy, sx);
+	#minxy = min(sy, sx);
 	try:	# windows size
 		wd = int(wd)
 	except: # window ratio
@@ -477,45 +478,59 @@ def GetLacSegImage(data, wd, imagename, slice = 9):
 			else:
 				lacData [x, y]  = 1.0
 
-	fileName 			= imagename + '_resGS_sliced-' +  str(slice) + '_wnd-' + str(wd) + '.png'
+	fileName 			= imagename + '_' + thresh + '_grayscale_sliced-' +  str(slice) + '_wnd-' + str(wd) + '.png'
 	resDict["resImage"] = fileName
 	resDict["window"] 	= wd
 
+	ld1 = maskImage(imagename, lacData)
+	lacData = ld1
 	minD = np.min(lacData)
 	maxD = np.max(lacData)
-	print "Lacunarity range: from ", minD, " to ", maxD, " for window = ", wd
 
-	if maxD - minD > 0.0:
+	if (maxD - minD) > 0.0:
+		lacDataN = (lacData - minD)/(maxD-minD)
+		print "Lacunarity range: from ", minD, " to ", maxD, " for window = ", wd
+
+		trData2  = np.array(lacDataN * 255, dtype='B')
+		if len(imagename) > 0:
+			Image.fromarray(trData2).save(resFolder + imagename + '_' + thresh + '_LacVals_w_' + str(wd) + '.tif',"TIFF")
+		
+		trData3, cdf = histeq(trData2, imagename + '_' + thresh + '_LacVals_w_' + str(wd) )
+		
 		x1, y1 = np.meshgrid(range(sy-df*2), range(sx-df*2))
-
 		fig  = plt.figure()
 		ax1  = fig.add_subplot(111)
 		lvls = np.arange(minD, maxD + 0.0001, (maxD-minD)/slice)
-		CF   = ax1.contourf(x1, y1, lacData, norm = None, levels = lvls) # norm=LogNorm()
-		CS   = ax1.contour( x1, y1, lacData, norm = None, colors = 'k', levels = lvls)
+		CF   = ax1.contourf(x1, y1, trData3, norm = None, levels = lvls) # norm=LogNorm()
+		CS   = ax1.contour( x1, y1, trData3, norm = None, colors = 'k', levels = lvls)
 		cbar = plt.colorbar(CF, ticks=lvls, format='%.4f')
 
 		plt.savefig(resFolder + fileName)
 		plt.close(fig)
+	
+		lacDataAll = lacDataN.flatten()			
 
-	lacDataAll = []
-	for x in lacData:
-		for y in x:
-			lacDataAll.append(y)
+		f = plt.figure()
+		f.clear()
+		r1 = plt.hist(lacDataAll, slice)
+		plt.title('Histogram ' + imagename + ' sliced-' +  str(slice) + ' window-' + str(wd))
+		plt.xlabel('lacunarity bin')
+		plt.ylabel('lacunarity freq.')
+		fileName 		    = imagename + "_"  + thresh + "_resGS_hstgrm-" +  str(slice) + '_wnd-' + str(wd) + ".png"
+		resDict["hstImage"] = fileName
+		plt.savefig(resFolder + fileName)
+		plt.close(f)
+	else:
+		print "Image data has flat values..."
+		print "Lacunarity range: from ", minD, " to ", maxD, " for window = ", wd
+		
+	#lacDataAll = []
+	#for x in lacData:
+	#	for y in x:
+	#		lacDataAll.append(y)
 
 	# Get Histogram for all possible values
 	#(dataHst, nHst) = np.histogram(lacDataAll, slice)
-
-	f = plt.figure()
-	f.clear()
-	r1 = plt.hist(lacDataAll, slice)
-	plt.title('Histogram ' + imagename + ' GS sliced-' +  str(slice) + ' window-' + str(wd))
-	plt.xlabel('bin')
-	plt.ylabel('lacunarity')
-	fileName 		    = imagename + "_resGS_hstgrm-" +  str(slice) + '_wnd-' + str(wd) + ".png"
-	resDict["hstImage"] = fileName
-	plt.savefig(resFolder + fileName)
-	plt.close(f)
 
 	"""
 	#print nHst
@@ -554,11 +569,12 @@ def GetSegImage(iData, imagename, slice = 9):
 		ax1  = fig.add_subplot(111)
 		lvls = np.arange(minD, maxD + 0.0001, (maxD-minD)/slice)
 		CF   = ax1.contourf(x1, y1, iData, norm = None, levels = lvls) # norm=LogNorm()
-		CS   = ax1.contour( x1, y1, iData, norm = None, colors = 'k', levels = lvls)
+		#CS   = ax1.contour( x1, y1, iData, norm = None, colors = 'k', levels = lvls)
 		cbar = plt.colorbar(CF, ticks=lvls, format='%.4f')
 
 		plt.savefig(resFolder + fileName)
 		plt.close(fig)
+
 	#print "GetSegImage - Mid"
 	# get image histogram
 	imhist, bins = np.histogram(iData.flatten(), slice) #, (0,256)) #, density=True)
@@ -580,8 +596,12 @@ def NormalizedRoy(data):
 	lacNorm = []
 	Lmin = min(data)
 	Lmax = max(data)
+	print Lmin, Lmax
 	for dt in data:
+		#if (Lmax-Lmin) != 0:
 		lacNorm.append((dt-Lmin)/(Lmax-Lmin))
+		#else:
+		#	lacNorm.append(0)
 	return lacNorm
 
 def NormalizedMalhi(data):
@@ -639,7 +659,8 @@ def Threshold_Adaptive(idata, savePics = ''):
 	block_size  = 40
 	threshold   = 0
 	trData1     = threshold_adaptive(idata, block_size, offset = 10)
-	trData2  = np.array(trData1, dtype='B')
+	
+	trData2     = np.array(trData1, dtype='B')
 	if len(savePics) > 0:
 		Image.fromarray(trData2 * 255).save(resFolder + savePics + '_TH_adaptive_' + str(threshold) + '.tif',"TIFF")
 
@@ -647,6 +668,7 @@ def Threshold_Adaptive(idata, savePics = ''):
 		trDataR10  = PIL.ImageOps.mirror(Image.fromarray(idata))
 		trDataR11  = inar = np.asarray(trDataR10)
 		trDataR1   = threshold_adaptive(trDataR11, block_size, offset=10)
+		
 		trDataR2   = np.array(trDataR1, dtype='B')
 		if len(savePics) > 0:
 			Image.fromarray(trDataR2 * 255).save(resFolder + savePics +'_TH_adaptive_' + str(threshold) + 'R.tif',"TIFF")
@@ -701,6 +723,12 @@ def Lac_Threshold_Image(idata, thresh_type, savePics = '', mj = 0, threshold = 1
 		threshImageData = Threshold_Otsu(idata, savePics)
 		threshold = 0
 		lacLeg   = thresh_type
+		lacLegR   = 'R ' + thresh_type
+
+	if thresh_type == "":
+		threshImageData = [0,idata,[]]
+		threshold = 0
+		lacLeg    = thresh_type
 		lacLegR   = 'R ' + thresh_type
 
 	if CalLac:
@@ -766,14 +794,28 @@ def Calc_LacHistogramThreshold(idata, savePics = ''):
 	return [lacData, lacDataR, lacLeg]
 
 def Calc_LacSegment(imagename, idata, wd):
+	dataSet  = {}
 	retDictR = []
-	dt1 = datetime.datetime.now()
-
-	fileName = resFolder + imagename + '.tif'
-
-	if len(imagename) > 0:
-		idata1  = np.array(idata, dtype='B')
-		Image.fromarray(idata1).save(fileName, "TIFF")
+	#dt1 = datetime.datetime.now()
+	idataFlattern = idata.flatten()
+	threshold1 = (np.max(idataFlattern) - np.min(idataFlattern))/2
+	
+	#dataSet['Adaptive'] = Threshold_Adaptive(idata, imagename)[1]
+	#dataSet['Otsu']     = Threshold_Otsu(idata, imagename)[1]
+	#dataSet['ISOData']  = Threshold_ISODATA(idata, imagename)[1]
+	#dataSet['Fixed']    = Threshold_Fixed(idata, imagename, threshold1)[1]
+	
+	#threshImageDataA = Threshold_Adaptive(idata, imagename)
+	#threshImageDataO = Threshold_Otsu(idata, imagename)
+	#threshImageDataI = Threshold_ISODATA(idata, imagename)
+	#threshImageDataF = Threshold_Fixed(idata, imagename, threshold1)
+	#idata = dataSet['Otsu']
+	#idataO = threshImageDataO[1]
+	
+	#fileName = resFolder + imagename +"T" + '.tif'
+	#if len(imagename) > 0:
+	#	idata1  = np.array(idata, dtype='B')
+    #	Image.fromarray(idata1 * 255).save(fileName, "TIFF")
 
 	#calPos = [(55,210),(150,230),(130,130)]  # ,(164,216),(226,34)
 	#calPos = [(150,230)]
@@ -786,14 +828,17 @@ def Calc_LacSegment(imagename, idata, wd):
 	#	retLeg.append(r[2])
 
 	for w1 in wd:
-		[retDict] = GetLacSegImage(idata, w1, imagename, 18)
-		retDictR  = dict( retDictR, **retDict )
-		retDictR.append(retDict)
+		#for d1 in dataSet.items():
+		#	[retDict] = GetLacSegImage(d1[1], d1[0], w1, imagename, 255)
+		[retDict] = GetLacSegImage(idata, "Grayscale", w1, imagename, 255)
+	
+		#retDictR  = dict( retDictR, **retDict )
+		#retDictR.append(retDict)
 
-	dt2 = datetime.datetime.now()
-	print "Time Taken for Calc_LacSegment  = ", dt2-dt1
-
+	#dt2 = datetime.datetime.now()
+	#print "Time Taken for Calc_LacSegment  = ", dt2-dt1
 	#return [retDictR, retRes, retLeg]
+
 	return [retDictR]
 
 def Calc_LacSegSemiVar(imagename, idata, wdszs):
@@ -825,7 +870,7 @@ def Calc_LacSegSemiVar(imagename, idata, wdszs):
 	dt2 = datetime.datetime.now()
 	print "Time Taken for (C LacSegSemiVar)  = ", dt2-dt1
 
-	return npimageD1
+	return [npimageD1, imageD]
 
 def Calc_LacNormPlot(lacData):
 	x  = range(1, xMax+1)
@@ -897,7 +942,8 @@ def Calc_LacBINAllThresholds(imagename, idata):
 	lacData = []
 	xMax = 10000
 	for t in range(len(ThresholdTypes)):
-		[lac1, lacR1, lacLeg1, lacLegR, thresh] = Lac_Threshold_Image(idata, ThresholdTypes[t], imagename)
+		ttype = "" #ThresholdTypes[t]
+		[lac1, lacR1, lacLeg1, lacLegR, thresh] = Lac_Threshold_Image(idata, ttype, imagename)
 		xMax = min(xMax, len(lac1))
 		lacData.append([lac1, lacLeg1, thresh])
 
@@ -923,7 +969,7 @@ def Calc_LacBINAllThresholds(imagename, idata):
 		if len(ThresholdTypes) > 1:
 			plt.title("Threshold Methods")
 		else:
-			plt.title("Threshold = " + ThresholdTypes[0])
+			plt.title("Threshold = " + ttype)
 		plt.xlabel('window size')
 		plt.ylabel('lacunarity')
 		figFilename = resFolder + imagename + "_allthresholds.png"
@@ -939,7 +985,7 @@ def Calc_LacBINAllThresholds(imagename, idata):
 		if len(ThresholdTypes) > 1:
 			plt.title("Threshold Methods - log/log")
 		else:
-			plt.title("Threshold = " + ThresholdTypes[0] + " - log/log")
+			plt.title("Threshold = " + ttype + " - log/log")
 		plt.xlabel('window size (log)')
 		plt.ylabel('lacunarity (log)')
 		figFilename = resFolder + imagename + "_allthresholds_loglog.png"
@@ -957,7 +1003,7 @@ def Calc_LacBINAllThresholds(imagename, idata):
 			if len(ThresholdTypes) > 1:
 				plt.title("Threshold Methods - Normalized (Malhi)")
 			else:
-				plt.title("Threshold = " + ThresholdTypes[0] + " - Normalized (Malhi)")
+				plt.title("Threshold = " + ttype + " - Normalized (Malhi)")
 			plt.xlabel('window size')
 			plt.ylabel('lacunarity')
 			figFilename = resFolder + imagename + "_allthresholds_NormM.png"
@@ -974,7 +1020,7 @@ def Calc_LacBINAllThresholds(imagename, idata):
 			if len(ThresholdTypes) > 1:
 				plt.title("Threshold Methods - Normalized (Malhi)")
 			else:
-				plt.title("Threshold = " + ThresholdTypes[0] + " - Normalized (Malhi)")
+				plt.title("Threshold = " + ttype + " - Normalized (Malhi)")
 			plt.xlabel('window size (log)')
 			plt.ylabel('lacunarity')
 			figFilename = resFolder + imagename + "_allthresholds_NormM-log.png"
@@ -992,7 +1038,7 @@ def Calc_LacBINAllThresholds(imagename, idata):
 			if len(ThresholdTypes) > 1:
 				plt.title("Threshold Methods - Normalized (Roy)")
 			else:
-				plt.title("Threshold = " + ThresholdTypes[0] + " - Normalized (Roy)")
+				plt.title("Threshold = " + ttype + " - Normalized (Roy)")
 			plt.xlabel('window size')
 			plt.ylabel('lacunarity')
 			figFilename = resFolder + imagename + "_allthresholds_NormM.png"
@@ -1009,7 +1055,7 @@ def Calc_LacBINAllThresholds(imagename, idata):
 			if len(ThresholdTypes) > 1:
 				plt.title("Threshold Methods - Normalized (Roy)")
 			else:
-				plt.title("Threshold = " + ThresholdTypes[0] + " - Normalized (Roy)")
+				plt.title("Threshold = " + ttype + " - Normalized (Roy)")
 			plt.xlabel('window size (log)')
 			plt.ylabel('lacunarity')
 			figFilename = resFolder + imagename + "_allthresholds_NormM-log.png"
@@ -1615,7 +1661,7 @@ def Cal_GrayScaleLacunarity(imagename, idata):
 	lacData = GetLacunarity(idata)
 
 	x  = range(1, len(lacData)+1)
-	lx = [log(x1) for x1 in x]
+	#lx = [log(x1) for x1 in x]
 
 	# Save Data to CSV file
 	saveas = resFolder + 'gslac_' + imagename + ".csv"
@@ -1669,8 +1715,43 @@ def Cal_GrayScaleLacunarity(imagename, idata):
 	plt.savefig(figFilename)
 	plt.close(f0)
 	"""
+def maskImage(imagename, data):
+	mData = getImageData(imgFolder, imagename + '-mask', '.png')
+	print imagename, data.shape, mData.shape
+	print np.min(mData), np.max(mData)
+	
+	xOff = mData.shape[0] - data.shape[0]
+	yOff = mData.shape[1] - data.shape[1]
+	if 	data.shape[0] <= mData.shape[0] and data.shape[0] <= mData.shape[0]:
+		xOff = xOff/2 
+		yOff = yOff/2
+		mData1 = np.zeros([data.shape[0], data.shape[1]], dtype=np.float)
+		for k in range(data.shape[0]):
+			for j in range(data.shape[1]):
+				if mData[k+xOff][j+yOff] > 0:
+					mData1[k][j] = data[k][j]
+				else:
+					mData1[k][j] = 0.0
+	else:
+		print "Mask not applied!"
+		mData1 = data
 
+	"""
+	mData1 = np.zeros([mData.shape[0], mData.shape[1]], dtype=np.float)
+	for k in range(mData.shape[0]):
+		for j in range(mData.shape[1]):
+			if mData[k][j] > 0:
+				mData1[k][j] = 0.0
+			else:
+				mData1[k][j] = 1.0
+	mData2  = np.array(mData1, dtype='B')
+	Image.fromarray(mData2 * 255).save(resFolder + imagename + '_ms.png',"png")
+	"""
+	
+	return mData1
+	
 def getWindowSizes(imagename, idata):
+	dim1 = min(idata.shape)
 	#retDict = Calc_LacBIN(imagename, idata, 0)
 	#retDict = Calc_LacBIN(imagename, idata, 1)
 	#retDict = Calc_LacBIN(imagename, idata, 2)
@@ -1687,30 +1768,34 @@ def getWindowSizes(imagename, idata):
 	#testData["LacBIN"] = retDict
 
 	#winds = [3, 5, 51, '10x', '20x']
-	winds = [3, 5, 7, 9, 11, 13,15,17,19,21,49,51,53,75]
-	#winds = [51]
-
+	#winds = [3, 5, 7, 9, 11, 13,15,17,19,21,49,51,53,75]
+	#winds = [2,3,5,7,11,17,36,48,56]
+	winds = [5,56]
+	#winds = range(5,dim1/2,5)
+	print winds
 	return winds
 
 def ProcessAnImage_Seg(imagename, ext1):
 	testData = {}
 	dt1 = datetime.datetime.now()
 
-	testData["imagename"] = imagename + ext1
+	#testData["imagename"] = imagename + ext1
 
 	# Load Image
-	idata1 = getImageData(imgFolder, imagename, ext1)
+	idata2 = getImageData(imgFolder, imagename, ext1)
 
 	if histEq:
-		idata, cdf = histeq(idata1, imagename)
+		idata1, cdf = histeq(idata2, imagename)
+		idata  = np.array(idata1, dtype='B')
+		Image.fromarray(idata).save(resFolder + imagename + "_histEq.tif", "TIFF")
 	else:
-		idata = idata1
+		idata1 = idata2
 
-	winds = getWindowSizes(imagename, idata)
+	winds = getWindowSizes(imagename, idata1)
 
 	#[retDict, retR, retL] = Calc_LacSegment(imagename, idata, winds)
 	retDict = Calc_LacSegment(imagename, idata, winds)
-	testData["LacGSSeg"] = retDict
+	#testData["LacGSSeg"] = retDict
 
 	#plotMul(retR,"T",retL,0)
 
@@ -1722,22 +1807,26 @@ def ProcessAnImage_Seg_UsingSemivariantData(imagename, ext1):
 	dt1 = datetime.datetime.now()
 
 	# Load Image
-	idata1 = getImageData(imgFolder, imagename, ext1)
+	idata2 = getImageData(imgFolder, imagename, ext1)
 
 	if histEq:
-		idata, cdf = histeq(idata1, imagename)
+		idata1, cdf = histeq(idata2, imagename)
 	else:
-		idata = idata1
+		idata1 = idata2
 
-	[rng, mRng] = ProcessAnImage_SD_M_RANGE(imagename, idata)
-	ret = Calc_LacSegSemiVar(imagename+'R', idata, rng)
-	Image.fromarray(ret).save(resFolder + imagename+'R' + "-L.tif", "TIFF")
-	ret = Calc_LacSegSemiVar(imagename+'MR', idata, mRng)
-	Image.fromarray(ret).save(resFolder + imagename+'MR' + "-L.tif", "TIFF")
+	idata  = np.array(idata1.reshape(idata1.shape), dtype='B')
+	Image.fromarray(idata).save(resFolder + imagename + "_gs.tif", "TIFF")
+
+	[rng, mRng] = ProcessAnImage_SD_M_RANGE(imagename, idata1)
+
+	ret1 = Calc_LacSegSemiVar(imagename+'R', idata1, rng)
+	Image.fromarray(ret1[0]).save(resFolder + imagename+'R' + "-L.tif", "TIFF")
+	ret2 = [[],[]] #Calc_LacSegSemiVar(imagename+'MR', idata1, mRng)
+	#Image.fromarray(ret2[0]).save(resFolder + imagename+'MR' + "-L.tif", "TIFF")
 
 	dt2 = datetime.datetime.now()
 	print "Time Taken for (Seg_UsingSemivariantData) Image:", imagename, " = ", dt2-dt1
-	return
+	return [rng, mRng, ret1[1], ret2[1]]
 
 def ProcessAnImage_Lacunarity_GrayScale(imagename, ext1):
 	#idata = np.array([[5,4,8,7,9],[12,12,11,8,12],[11,12,9,10,5],[1,2,5,3,11],[5,9,2,7,10]])
@@ -1823,7 +1912,7 @@ def ProcessAnImage_Lacunarity_Norm(testImages):
 		WriteToCSVFile(saveas, [lacData])
 
 	x  = range(1, xMax+1)
-	lx = [log(x1) for x1 in x]
+	#lx = [log(x1) for x1 in x]
 
 	#print lacData
 
@@ -2048,7 +2137,8 @@ def ProcessAnImage_ALV(imagename, ext1):
 	else:
 		idata = idata1
 
-	alv1 = Calc_ALV(imagename, idata)
+	#alv1 =
+	Calc_ALV(imagename, idata)
 	#testData["ALV"] = alv1
 
 	dt2 = datetime.datetime.now()
@@ -2058,35 +2148,50 @@ def ProcessAnImage_ALV(imagename, ext1):
 if __name__ == '__main__':
 	testList = []
 
-	set = 0
+	# Select the function below with the number
+	set = 3
 
 	# Lacunarity
 	if set == 0:
+		resFolder = resFolder1 + 'respy12/'
+
 		#imgFolder = imgFolder1 + 'images1/'
-		imgFolder = imgFolder1 + 'imagesCreated/'
-		resFolder = resFolder1 + 'respy09_para/'
+		#imgFolder = imgFolder1 + 'imagesCreated/'
+
 		#testImages = [('honeycomb2', '.tif')]
 		#testImages = [('honeycombb', '.tif')]
-		testImages = [('Sq2_A','.tif'), ('Sq2_B','.tif'), ('Sq2_C','.tif'), ('Sq2_D','.tif')]
+		#testImages = [('RAC275', '.tif'),('RAC325', '.tif')]
+		#testImages = [('Sq2_A','.tif')] #, ('Sq2_B','.tif'), ('Sq2_C','.tif'), ('Sq2_D','.tif')]
 		#testImages = [('peru480-blogSpan','.jpg')]
 
+		imgFolder  = imgFolder1 + 'images2/'
+		testImages = [('MRI slice','.jpg')]
+		for tImg, ext in testImages:
+			ret = ProcessAnImage_Lacunarity(tImg, ext)
+			#ret = ProcessAnImage_Lacunarity(tImg, ext, 1)
+
+		imgFolder  = imgFolder1 + 'MSRC_ObjCategImageDatabase_v1/Sel1/'
+		testImages = [('cows-gray','.bmp'),('cows-gray-smooth','.bmp')]
 		for tImg, ext in testImages:
 			ret = ProcessAnImage_Lacunarity(tImg, ext)
 			#ret = ProcessAnImage_Lacunarity(tImg, ext, 1)
 
 	# ALV
 	if set == 1:
-		imgFolder = imgFolder1 + 'images2/'
-		#testImages = ['honeycomb2', 'Sq2_A', 'Sq2_B', 'Sq2_C', 'Sq2_D']
-		testImages = ['ALV_Samp_A', 'ALV_Samp_B', 'ALV_Samp_C', 'ALV_Samp_D', 'ALV_Samp_E', 'ALV_Samp_F']
+		imgFolder = imgFolder1 + 'images1/'
+		resFolder = resFolder1 + 'respy10/'
+		#testImages = ['honeycomb2'] #, 'Sq2_A', 'Sq2_B', 'Sq2_C', 'Sq2_D']
+		#testImages = [('RAC275', '.tif'),('RAC325', '.tif')]
+		testImages = ['RAC275', 'RAC325']
+		#testImages = ['ALV_Samp_A', 'ALV_Samp_B', 'ALV_Samp_C', 'ALV_Samp_D', 'ALV_Samp_E', 'ALV_Samp_F']
 		for tImg in testImages:
 			ProcessAnImage_ALV(tImg, '.tif')
 
 	# Parameterization
 	if set == 2:
 		#imgFolder = imgFolder1 + 'imagesBrodatzTexture/textures/'
-		imgFolder = imgFolder1 + 'images2/'
-		resFolder = resFolder1 + 'respy03_para/'
+		imgFolder  = imgFolder1 + 'images2/'
+		resFolder  = resFolder1 + 'respy03_para/'
 		testImages = ['lena256b-org']
 		#testImages = ['1.2.03', '1.2.12']
 		#testImages = ['1.1.01', '1.1.07', 'texmos3.s512', '1.5.02']
@@ -2096,17 +2201,21 @@ if __name__ == '__main__':
 
 	# Segmentation  1
 	if set == 3:
-		imgFolder = imgFolder1 + 'images2/'
-		#testImages = ['MRI slice']
-		#for tImg in testImages:
-		#    ProcessAnImage_ALV(tImg, '.jpg')
-		#	ret = ProcessAnImage_Seg(tImg, '.jpg')
-		#	testList.append(ret)
+		resFolder  = resFolder1 + 'respy15/'
+		imgFolder  = imgFolder1 + 'imageSeg/'
+		#testImages = [('MRI-slice','.jpg'),('cows-gray','.jpg')]
+		testImages = [('MRI-slice','.jpg')]
+		#testImages = [('cows-gray','.jpg')]
+		for tImg, ext in testImages:
+			#ProcessAnImage_ALV(tImg, ext)
+			ret = ProcessAnImage_Seg(tImg, ext)
 
-		testImages = ['lena256b-org']
-		for tImg in testImages:
-			ret = ProcessAnImage_Seg(tImg, '.bmp')
-			testList.append(ret)
+		#imgFolder = imgFolder1 + 'MSRC_ObjCategImageDatabase_v1/Sel1/'
+		#testImages = ['1_14_s', '4_7_s']
+		#testImages = [('cows-gray','.bmp'),('cows-gray-smooth','.bmp')]
+		#for tImg in testImages:
+			#ProcessAnImage_ALV(tImg, '.bmp')
+			#ret = ProcessAnImage_Seg(tImg[0], '.bmp')
 
 		#imgFolder = '../images1/'
 		#testImages = ['honeycomb2A'] # 'honeycomb2'
@@ -2144,7 +2253,8 @@ if __name__ == '__main__':
 
 	# Space Data - Lacunarity
 	if set == 6:
-		imgFolder = '../spacedata/'
+		imgFolder = imgFolder1 + 'imagesSpaceData/'
+		resFolder = resFolder1 + 'respy10/'
 		testImages = [('p1-Map_pac2 cropmid','.tif'), ('p2-Map_pac2f cropmid','.tif')]
 		for tImg, ext in testImages:
 			ProcessAnImage_Lacunarity(tImg, ext)
@@ -2166,19 +2276,47 @@ if __name__ == '__main__':
 
 	# Semivariogram - modified method to segment images
 	if set == 9:
-		resFolder = resFolder1 + 'respy08_para/'
+		resFolder = resFolder1 + 'respy13/'
 
 		#imgFolder = imgFolder1 + 'images1/'
 		#testImages = [('honeycomb2','.tif'), ('Sq2_A','.tif'), ('Sq2_B','.tif'), ('Sq2_C','.tif'), ('Sq2_D','.tif')]
 		#for tImg, ext in testImages:
 		#	ret = ProcessAnImage_Seg_UsingSemivariantData(tImg, ext)
 
-		#imgFolder = imgFolder1 + 'images2/'
-		#testImages = [('MRI slice-org', '.jpg'),('lena256b-org','.bmp')]
-		#for tImg, ext in testImages:
-		#	ret = ProcessAnImage_Seg_UsingSemivariantData(tImg, ext)
-
-		imgFolder = imgFolder1 + 'MSRC_ObjCategImageDatabase_v1/Sel1/'
-		testImages = [('4_7_s', '.bmp'),('1_14_s','.bmp')]
+		imgFolder = imgFolder1 + 'images2/'
+		testImages = [('MRI slice-org', '.jpg')] #,('lena256b-org','.bmp')]
+		"""
 		for tImg, ext in testImages:
 			ret = ProcessAnImage_Seg_UsingSemivariantData(tImg, ext)
+
+			with open(resFolder + tImg + "_Rng.csv", 'w') as fp:
+				a = csv.writer(fp, delimiter=',')
+				a.writerows(ret[0])
+			with open(resFolder + tImg + "_MRng.csv", 'w') as fp:
+				a = csv.writer(fp, delimiter=',')
+				a.writerows(ret[1])
+			with open(resFolder + tImg + "_RngLac.csv", 'w') as fp:
+				a = csv.writer(fp, delimiter=',')
+				a.writerows(ret[2])
+			#with open(resFolder + tImg + "_MRngLac.csv", 'w') as fp:
+			#	a = csv.writer(fp, delimiter=',')
+			#	a.writerows(ret[3])
+		"""
+		imgFolder = imgFolder1 + 'MSRC_ObjCategImageDatabase_v1/Sel1/'
+		#testImages = [('4_7_s', '.bmp'),('1_14_s','.bmp')]
+		testImages = [('cows-gray','.bmp')] # ,('cows-gray-smooth','.bmp')]
+		for tImg, ext in testImages:
+			ret = ProcessAnImage_Seg_UsingSemivariantData(tImg, ext)
+
+			with open(resFolder + tImg + "_Rng.csv", 'w') as fp:
+				a = csv.writer(fp, delimiter=',')
+				a.writerows(ret[0])
+			with open(resFolder + tImg + "_MRng.csv", 'w') as fp:
+				a = csv.writer(fp, delimiter=',')
+				a.writerows(ret[1])
+			with open(resFolder + tImg + "_RngLac.csv", 'w') as fp:
+				a = csv.writer(fp, delimiter=',')
+				a.writerows(ret[2])
+			#with open(resFolder + tImg + "_MRngLac.csv", 'w') as fp:
+			#	a = csv.writer(fp, delimiter=',')
+			#	a.writerows(ret[3])
